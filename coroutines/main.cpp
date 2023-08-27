@@ -1,67 +1,65 @@
 #include <coroutine>
 #include <iostream>
 
-// empty return object
+// example to show communciation between the coroutine and main
+
 struct CoroReturnObj {
-  // promise type
   struct promise_type {
-    CoroReturnObj get_return_object() { return {}; }
+    // used to communicate between the coroutine and main
+    int add_right_val{};
+
+    CoroReturnObj get_return_object() {
+      return {.handle = Handle::from_promise(*this)};
+    }
     std::suspend_never initial_suspend() { return {}; }
     std::suspend_never final_suspend() noexcept { return {}; }
-    void unhandled_exception() {}
+    void unhandled_exception(){};
   };
+
+  using Handle = std::coroutine_handle<promise_type>;
+
+  // store the handle, and have the correct user defined
+  // conversion operators for it
+  Handle handle;
+  operator std::coroutine_handle<>() const { return handle; }
+  operator Handle() const { return handle; }
 };
+using Handle = std::coroutine_handle<CoroReturnObj::promise_type>;
 
-struct CoroAwaiter {
-  std::coroutine_handle<> *handle;
-  constexpr bool await_ready() const noexcept {
-    return false;
-  } // don't skip suspending
-  void await_suspend(std::coroutine_handle<> h) {
-    *handle = h;
-  } // pass the coroutine handle generated from co_await to the original handle
-  constexpr int await_resume() const noexcept { return 3; } // test return value
-};
+struct CoAwaiter {
+  int *promise_obj_right_val{};
+  int add_left_val{};
 
-CoroReturnObj counter(std::coroutine_handle<> *continuation_out) {
-  CoroAwaiter a{continuation_out};
-
-  std::suspend_never b{};
-  std::suspend_always c{};
-
-  for (unsigned i = 0;; ++i) {
-    // will suspend here and contain the return value of await_resume
-    auto x = co_await a;
-    std::cout << " >> passed the suspend co_await with a return value\n";
-    co_await b; // will not suspend here
-    std::cout << " >> passed the no suspend co_await\n";
-    co_await c; // will suspend here
-    std::cout << " >> passed the suspend co_await\n";
-    std::cout << " >> counter: " << (i += x) << std::endl;
+  constexpr bool await_ready() const noexcept { return false; }
+  void await_suspend(Handle handle) noexcept {
+    // saves pointer to value in the promise_type
+    promise_obj_right_val = &handle.promise().add_right_val;
   }
+  constexpr auto await_resume() const noexcept {
+    // uses value passed from main to compute the return
+    return *promise_obj_right_val + add_left_val;
+  }
+};
+
+auto value_generating_task(int add_val_left) -> CoAwaiter {
+  return CoAwaiter{.add_left_val = add_val_left};
 }
 
-int main() {
-  std::coroutine_handle<> h;
-  counter(&h);
+auto coroutine_func() -> CoroReturnObj {
+  int add_val_left = 5;
+  auto ret_val = co_await value_generating_task(add_val_left);
 
-  for (int i = 0; i < 3; ++i) {
-    std::cout << "In main function\n";
-    h();
-  }
+  std::cout << add_val_left << " + a value from main is: " << ret_val << "\n";
+}
 
-  h.destroy();
+auto main() -> int {
+  std::coroutine_handle<CoroReturnObj::promise_type> handler = coroutine_func();
+
+  handler.promise().add_right_val = 12;
+  handler();
 }
 
 /*
 # Output of this program:
-In main function
- >> passed the suspend co_await with a return value
- >> passed the no suspend co_await
-In main function
- >> passed the suspend co_await
- >> counter: 3
-In main function
- >> passed the suspend co_await with a return value
- >> passed the no suspend co_await
+5 + a value from main is: 17
 */
