@@ -58,7 +58,9 @@ auto main() -> int {
   handler.promise().add_right_val = 12;
   handler();
 
-  handler.destroy(); // need to cleanup
+  // since control flows off the end of the coroutine, the coroutine state is
+  // destroyed after handler is called above - this means we don't need to
+  // cleanup the state with handler.destroy()
 }
 
 /*
