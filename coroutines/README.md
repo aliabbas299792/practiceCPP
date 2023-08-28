@@ -78,4 +78,6 @@ To actually suspend with `co_await`, `await_ready` must return false and `await_
 You can `co_yield` a value and store it in the promise object for retrieval from the promise object.
 `co_return` can do this too - remember that if the coroutine doesn't infinitely produce values you must define `return_void` or `return_value`, otherwise you have undefined behaviour.
 
-`final_suspend` would be used to not cleanup the coroutine resources when it ends, which means you can do checks like `handle.done()` to check if it's done, and then you can check the promise for any data it may have stored if it used `co_return`.
+final_suspend` would be used to not cleanup the coroutine resources when it ends, which means you can do checks like `handle.done()` to check if it's done, and then you can check the promise for any data it may have stored if it used `co_return`.
+
+One other thing to note is the handling of exceptions, good practice would be to use the `unhandled_exception` method to store the `std::current_exception` in an `std::exception_ptr` and propagate the exception up to the calling scope.

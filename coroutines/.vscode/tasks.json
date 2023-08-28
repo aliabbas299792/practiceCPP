@@ -24,7 +24,7 @@
     {
       "label": "compile and run",
       "type": "shell",
-      "command": "cd build && meson compile && ./coroutine_experiment",
+      "command": "cd build && meson compile && ./generator_experiment",
       "problemMatcher": []
     }
   ]
