@@ -75,3 +75,7 @@ constexpr static coroutine_handle from_address(void *__a) noexcept {
 
 To actually suspend with `co_await`, `await_ready` must return false and `await_suspend` must return true IF it returns `bool` at all (instead of `void`).
 
+You can `co_yield` a value and store it in the promise object for retrieval from the promise object.
+`co_return` can do this too - remember that if the coroutine doesn't infinitely produce values you must define `return_void` or `return_value`, otherwise you have undefined behaviour.
+
+`final_suspend` would be used to not cleanup the coroutine resources when it ends, which means you can do checks like `handle.done()` to check if it's done, and then you can check the promise for any data it may have stored if it used `co_return`.
